@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}{{ cfg.title }} - POS{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h2>{{ 'Edit' if editing else 'New' }} {{ cfg.title }}</h2>
+
+  {# Jinja auto-escapes {{ values[...] }}, which protects against XSS #}
+  <form method="post" action="{{ url_for('save', slug=slug) }}">
+    <input type="hidden" name="editing" value="{{ '1' if editing else '0' }}">
+
+    {% for f in cfg.fields %}
+      <label for="{{ f.name }}">{{ f.label }}</label>
+
+      {% if f.kind == 'select' %}
+        <select id="{{ f.name }}" name="{{ f.name }}">
+          {% for option in f.options %}
+            <option value="{{ option }}" {{ 'selected' if values[f.name] == option }}>{{ option }}</option>
+          {% endfor %}
+        </select>
+
+      {% else %}
+        {# The primary key can't be changed while editing, otherwise it would be a different record #}
+        <input id="{{ f.name }}" name="{{ f.name }}" value="{{ values[f.name] }}" autocomplete="off"
+               {% if f.kind == 'readonly' or (editing and f.name == cfg.pk) %}readonly{% endif %}
+               {% if f.kind == 'decimal' %}inputmode="decimal"{% elif f.kind == 'integer' %}inputmode="numeric"{% endif %}
+               {% if f.datalist %}list="{{ f.datalist }}"{% endif %}
+               {% if f.required != false and f.kind != 'readonly' %}required{% endif %}>
+      {% endif %}
+    {% endfor %}
+
+    <div class="buttons">
+      <button type="submit" class="primary">Save</button>
+      <a class="button" href="{{ url_for('crud_page', slug=slug) }}">Clear</a>
+    </div>
+  </form>
+
+  {% if slug == 'sales' %}
+    {# Suggestions for the two code boxes + prices for auto-fill (see static/sales.js) #}
+    <datalist id="customer-codes">{% for c in customer_codes %}<option value="{{ c }}">{% endfor %}</datalist>
+    <datalist id="item-codes">{% for c in item_codes %}<option value="{{ c }}">{% endfor %}</datalist>
+    <script id="prices" type="application/json">{{ prices | tojson }}</script>
+    <script src="{{ url_for('static', filename='sales.js') }}"></script>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>{{ cfg.title }} list <small>({{ rows | length }})</small></h2>
+  {% if rows %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>{% for f in cfg.fields %}<th>{{ f.label }}</th>{% endfor %}<th></th></tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          {% for f in cfg.fields %}<td>{{ row[f.name] if row[f.name] is not none else '' }}</td>{% endfor %}
+          <td class="actions">
+            <a class="button small" href="{{ url_for('crud_page', slug=slug, edit=row[cfg.pk]) }}">Edit</a>
+            <form method="post" action="{{ url_for('delete', slug=slug) }}"
+                  onsubmit="return confirm('Delete this record?');">
+              <input type="hidden" name="key" value="{{ row[cfg.pk] }}">
+              <button type="submit" class="small danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <p class="empty">Nothing here yet - fill in the form above and press Save.</p>
+  {% endif %}
+</section>
+{% endblock %}

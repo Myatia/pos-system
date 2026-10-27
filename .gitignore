@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Local database (created automatically on first run - don't upload your test data)
+pos.db
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
